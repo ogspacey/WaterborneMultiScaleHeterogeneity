@@ -1,6 +1,6 @@
 # Multi-scale heterogeneity model
 # Oliver G. Spacey
-# 2025.10.07
+# 2025.10.14
 
 # Pre-amble ---------------------------------------------------------------
 # Clear environment
@@ -13,7 +13,7 @@ library(reshape2)  # data wrangling
 library(scales)    # data wrangling
 library(tidyverse) # data wrangling
 
-# Initial model -----------------------------------------------------------
+# Initial Model -----------------------------------------------------------
 # Create function to run multi-scale model
 msmod <- function(t, y, parameters){
   # Pull state variables from y vector
@@ -65,31 +65,57 @@ msmod <- function(t, y, parameters){
 }
 
 # Set times to run simulation for
-times = seq(0, 365, by = 1)
+times = seq(0, 365*1000, by = 1)
 
-# Set parameters using data in Robertson et al. and Mukandivire et al.
-# Homogeneous model where ΣaβW = ΣβD 
-paras = c(mu      = 1/(40*365), # Mean 50-year lifespan
-          betaWA  = 0.4*10^6,        # Indirect transmission rate to patch A - scale by kappa
-          betaWB  = 0.4*10^6,        # Indirect transmission rate to patch B - scale by kappa
-          kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection   
+# Set population sizes and original parameters inspired by Mukandivire et al.
+N_A <- 10000 # Patch A population size
+N_B <- 10000 # Patch B population size
+pAH <- 0.5 # Equal proportion of high- and low-infectiousness individuals in patch A
+pAL <- 0.5
+pBH <- 0.5 # Equal proportion of high- and low-infectiousness individuals in patch B
+pBL <- 0.5
+b_D_AH <- 0.00003 # Direct transmission rate for high-infectiousness individuals in patch A
+b_D_AL <- 0.00003 # Direct transmission rate for low-infectiousness individuals in patch A
+b_D_BH <- 0.00003 # Direct transmission rate for high-infectiousness individuals in patch B
+b_D_BL <- 0.00003 # Direct transmission rate for low-infectiousness individuals in patch B
+b_W_A <- 0.1 # Indirect transmission rate for patch A
+b_W_B <- 0.1 # Indirect transmission rate for patch B
+alpha_AH <- 10 # Shedding rate for high-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_AL <- 10 # Shedding rate for low-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_BH <- 10 # Shedding rate for high-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+alpha_BL <- 10 # Shedding rate for low-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+tot_shed <- alpha_AH * N_A * pAH + alpha_AL * N_A * pAL + alpha_BH * N_B * pBH + alpha_BL * N_B * pBL # Total shedding from all individuals, for scaling
+xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+  
+# Calculate non-dimensionalised parameters
+# Initial homogeneous model where ΣaβW/κ = ΣβD 
+paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
+          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A - scale by kappa for saturating effect
+          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B - scale by kappa for saturating effect
+          kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
           pAH     = 0.5,        # Equal proportion of high- and low-infectiousness individuals in patch A
           pAL     = 0.5,
           pBH     = 0.5,        # Equal proportion of high- and low-infectiousness individuals in patch B
           pBL     = 0.5,
-          betaDAH = 0.2,       # Direct transmission rate for high-infectiousness individuals in patch A
-          betaDAL = 0.2,       # Direct transmission rate for low-infectiousness individuals in patch A
-          betaDBH = 0.2,       # Direct transmission rate for high-infectiousness individuals in patch B
-          betaDBL = 0.2,       # Direct transmission rate for low-infectiousness individuals in patch B
-          zeta    = 0.05,         # Inter-patch mixing is 5% strength of intra-patch mixing
-          gamma   = 1/4,        # Duration of infection of 4 days
-          aAH     = 0.5,        # Shedding rate from high-infectiousness individuals in patch A
-          aAL     = 0.5,        # Shedding rate from low-infectiousness individuals in patch A
-          aBH     = 0.5,        # Shedding rate from high-infectiousness individuals in patch B
-          aBL     = 0.5,        # Shedding rate from low-infectiousness individuals in patch B
-          xi      = 30/365)     # Rate of loss of bacteria from the environmental reservoir
+          betaDAH = b_D_AH * N_A * pAH,       # Direct transmission rate for high-infectiousness individuals in patch A
+          betaDAL = b_D_AL * N_A * pAL,       # Direct transmission rate for low-infectiousness individuals in patch A
+          betaDBH = b_D_BH * N_B * pBH,       # Direct transmission rate for high-infectiousness individuals in patch B
+          betaDBL = b_D_BL * N_B * pBL,       # Direct transmission rate for low-infectiousness individuals in patch B
+          zeta    = 0.05, # Inter-patch mixing is 5% strength
+          gamma   = 1/5, # Duration of infection of 5 days
+          aAH     = alpha_AH * N_A * pAH / tot_shed,  # Shedding rate from high-infectiousness individuals in patch A; scaled as proportion of total shedding
+          aAL     = alpha_AL * N_A * pAL / tot_shed,  # Shedding rate from low-infectiousness individuals in patch A; scaled as proportion of total shedding
+          aBH     = alpha_BH * N_B * pBH / tot_shed,  # Shedding rate from high-infectiousness individuals in patch B; scaled as proportion of total shedding
+          aBL     = alpha_BL * N_B * pBL / tot_shed,  # Shedding rate from low-infectiousness individuals in patch B; scaled as proportion of total shedding
+          xi      = xi)     # Rate of loss of bacteria from the environmental reservoir - 30 day life span
 
-# Set initial conditions
+# Calculate total indirect transmission - ΣaβW/κ 
+tot_w_trnm <- as.numeric((paras['aAH'] * paras['betaWA'] + paras['aAL'] * paras['betaWA'] + paras['aBH'] * paras['betaWB'] + paras['aBL'] * paras['betaWB']) / paras['kappa'])
+
+# Calculate total indirect transmission - ΣβD 
+tot_d_trnm <- as.numeric(paras['betaDAH'] + paras['betaDAL'] + paras['betaDBH'] + paras['betaDBL'])
+
+# Set initial conditions - epidemic conditions
 start <- c(SA  = 0.98,  # Susceptibles in patch A
            IAH = 0.01, # High-infectiousness infectious individuals in patch A
            IAL = 0.01, # Low-infectiousness infectious individuals in patch A
@@ -109,12 +135,18 @@ out = as.data.frame(out)
 # Check top of data frame
 head(round(out, 3))
 
-# Plot outputs - same for both patches and infectiousness classes,
-plot(x = out$time, y = out$SA, ylab = "Fraction", xlab = "Time", 
+# Plot outputs - same for both patches and infectiousness classes, so just plot one
+plot(x = out$time, y = out$SA, 
+     ylab = "Fraction of population", xlab = "Time (days)", 
      type = "l", ylim = c(0,1))
-lines(x = out$time, y = out$IAH, col = "red") 
+lines(x = out$time, y = out$IAH + out$IAL, col = "red") 
 lines(x = out$time, y = out$RA, col = "blue")
-lines(x = out$time, y = out$W, col = "purple")
+# Plot reservoir
+plot(x = out$time, y = out$W * tot_shed/xi, col = "purple", type = "l", 
+     xlab = "Time (days)", ylab = "Bacterial concentration in water")
+
+
+# Basic Reproduction Number ------------------------------------------------------------
 
 # Set parameters as previous parameters and compartments at disease-free equilibrium to evaluate R0
 dfeparameters <- c(SA  = 1, # Susceptibles in patch A
@@ -222,10 +254,38 @@ get.R0 <- function(dfeparas){
 # Get R0 for initial model
 get.R0(dfeparameters)
 
+# Long-term Dynamics ----------------------------------------------
+
+# Run initial model for 50 years
+times = seq(0, 365*50, by = 1)
+
+# Simulate dynamics
+out <- ode(y = start, times = times, func = msmod, parms = paras)
+
+# Convert output to data frame
+out = as.data.frame(out)
+
+# Check top of data frame
+head(round(out, 3))
+
+# Plot outputs - same for both patches and infectiousness classes, so just plot one
+plot(x = out$time, y = out$SA, 
+     ylab = "Fraction of population", xlab = "Time (days)", 
+     type = "l", ylim = c(0,1))
+lines(x = out$time, y = out$IAH + out$IAL, col = "red") 
+lines(x = out$time, y = out$RA, col = "blue")
+# Plot reservoir
+plot(x = out$time, y = out$W * tot_shed/xi, col = "purple", type = "l", 
+     xlab = "Time (days)", ylab = "Bacterial concentration in water")
+
 # Patch heterogeneity only ------------------------------------------------
 # Vary patch heterogeneity in indirect and direct transmission
 # Analogy - two sites differ in their exposure to dirty water (e.g., better sanitation in one patch), and/or rates of direct transmission
 # Expect similar results to Robertson et al
+
+### REDO THESE GRAPHS WITH NEW STRUCTURE - NON-DIMENSIONALISED FIRST
+### ADD IN EPIDEMIC LENGTH AND SIZE FROM START
+### MAKE MORE ROBUST CALCULATION OF EPIDEMIC SIZE
 
 # Vary ΣaβW and ΣβD for each patch
 # Direct and indirect transmission equal ΣpAjβDAj + ΣpBjβDBj = ΣpAjβWAaAj/κ + ΣpBjβWBaBj/κ
@@ -243,26 +303,47 @@ patch.het <- function(betaWs, betaDs){
     # Set betaD
     betaD <- betaDs[j]
     
-    # Set parameters
-    paras = c(mu      = 1/(50*365), # Mean 50-year lifespan
-              betaWA  = betaW,        # Indirect transmission rate to patch A
-              betaWB  = max(betaWs) - betaW,        # Indirect transmission rate to patch B
-              kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection   
+    # Set population sizes and original parameters inspired by Mukandivire et al.
+    N_A <- 10000 # Patch A population size
+    N_B <- 10000 # Patch B population size
+    pAH <- 0.5 # Equal proportion of high- and low-infectiousness individuals in patch A
+    pAL <- 0.5
+    pBH <- 0.5 # Equal proportion of high- and low-infectiousness individuals in patch B
+    pBL <- 0.5
+    b_D_AH <- 0.00003 # Direct transmission rate for high-infectiousness individuals in patch A
+    b_D_AL <- 0.00003 # Direct transmission rate for low-infectiousness individuals in patch A
+    b_D_BH <- 0.00003 # Direct transmission rate for high-infectiousness individuals in patch B
+    b_D_BL <- 0.00003 # Direct transmission rate for low-infectiousness individuals in patch B
+    b_W_A <- 0.1 # Indirect transmission rate for patch A
+    b_W_B <- 0.1 # Indirect transmission rate for patch B
+    alpha_AH <- 10 # Shedding rate for high-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+    alpha_AL <- 10 # Shedding rate for low-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+    alpha_BH <- 10 # Shedding rate for high-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+    alpha_BL <- 10 # Shedding rate for low-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+    tot_shed <- alpha_AH * N_A * pAH + alpha_AL * N_A * pAL + alpha_BH * N_B * pBH + alpha_BL * N_B * pBL # Total shedding from all individuals, for scaling
+    xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+    
+    # Calculate non-dimensionalised parameters
+    # Initial homogeneous model where ΣaβW/κ = ΣβD 
+    paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
+              betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A - scale by kappa for saturating effect
+              betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B - scale by kappa for saturating effect
+              kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
               pAH     = 0.5,        # Equal proportion of high- and low-infectiousness individuals in patch A
               pAL     = 0.5,
               pBH     = 0.5,        # Equal proportion of high- and low-infectiousness individuals in patch B
               pBL     = 0.5,
-              betaDAH = betaD,       # Direct transmission rate for high-infectiousness individuals in patch A
-              betaDAL = betaD,       # Direct transmission rate for low-infectiousness individuals in patch A
-              betaDBH = max(betaDs) - betaD,       # Direct transmission rate for high-infectiousness individuals in patch B
-              betaDBL = max(betaDs) - betaD,       # Direct transmission rate for low-infectiousness individuals in patch B
-              zeta    = 0.05,       # Inter-patch mixing is 5% strength of intra-patch mixing
-              gamma   = 1/4,        # Duration of infection of 4 days
-              aAH     = 0.5,        # Shedding rate from high-infectiousness individuals in patch A
-              aAL     = 0.5,        # Shedding rate from low-infectiousness individuals in patch A
-              aBH     = 0.5,        # Shedding rate from high-infectiousness individuals in patch B
-              aBL     = 0.5,        # Shedding rate from low-infectiousness individuals in patch B
-              xi      = 30/365)     # Rate of loss of bacteria from the environmental reservoir
+              betaDAH = b_D_AH * N_A * pAH,       # Direct transmission rate for high-infectiousness individuals in patch A
+              betaDAL = b_D_AL * N_A * pAL,       # Direct transmission rate for low-infectiousness individuals in patch A
+              betaDBH = b_D_BH * N_B * pBH,       # Direct transmission rate for high-infectiousness individuals in patch B
+              betaDBL = b_D_BL * N_B * pBL,       # Direct transmission rate for low-infectiousness individuals in patch B
+              zeta    = 0.05, # Inter-patch mixing is 5% strength
+              gamma   = 1/5, # Duration of infection of 5 days
+              aAH     = alpha_AH * N_A * pAH / tot_shed,  # Shedding rate from high-infectiousness individuals in patch A; scaled as proportion of total shedding
+              aAL     = alpha_AL * N_A * pAL / tot_shed,  # Shedding rate from low-infectiousness individuals in patch A; scaled as proportion of total shedding
+              aBH     = alpha_BH * N_B * pBH / tot_shed,  # Shedding rate from high-infectiousness individuals in patch B; scaled as proportion of total shedding
+              aBL     = alpha_BL * N_B * pBL / tot_shed,  # Shedding rate from low-infectiousness individuals in patch B; scaled as proportion of total shedding
+              xi      = xi)     # Rate of loss of bacteria from the environmental reservoir - 30 day life span
     
     # Set parameters at DFE
     dfeparameters <- c(SA  = 1, # Susceptibles in patch A
@@ -815,7 +896,7 @@ for(i in 1:length(betaWs)){
     patch_het_length[i,j] <- outputs[3]
   }
 }
-
+s
 # Wrangle to data frame of R0s
 patch_het_R0_df <- melt(patch_het_R0)
 names(patch_het_R0_df) <- c("betaW", "betaD", "R0")
@@ -1177,4 +1258,9 @@ ggplot(indiv_het_2_time_df, aes(x = pAH, y = pBH, fill =  epidemic_length)) +
        y = "proportion superspreaders in patch B",
        fill = "epidemic length") +
   theme_minimal()
+
+# Chain Patch Model -------------------------------------------------------
+# Set up single patch model
+
+
 
