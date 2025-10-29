@@ -65,33 +65,33 @@ msmod <- function(t, y, parameters){
 }
 
 # Set times to run simulation for
-times = seq(0, 365*50, by = 1)
+times = seq(0, 365, by = 1)
 
 # Set population sizes and original parameters inspired by Mukandivire et al.
 N_A <- 10000 # Patch A population size
 N_B <- 10000 # Patch B population size
-pAH <- 0.5 # Equal proportion of high- and low-infectiousness individuals in patch A
-pAL <- 0.5
-pBH <- 0.5 # Equal proportion of high- and low-infectiousness individuals in patch B
-pBL <- 0.5
-b_D_AH <- 0.000015 # Direct transmission rate for high-infectiousness individuals in patch A
-b_D_AL <- 0.000015 # Direct transmission rate for low-infectiousness individuals in patch A
-b_D_BH <- 0.000015 # Direct transmission rate for high-infectiousness individuals in patch B
-b_D_BL <- 0.000015 # Direct transmission rate for low-infectiousness individuals in patch B
+pAH <- 0.1 # Equal proportion of high- and low-infectiousness individuals in patch A
+pAL <- 0.9
+pBH <- 0.1 # Equal proportion of high- and low-infectiousness individuals in patch B
+pBL <- 0.9
+b_D_AH <- 0.000015 * 0.5 / pAH # Direct transmission rate for high-infectiousness individuals in patch A
+b_D_AL <- 0.000015 * 0.5 / pAL # Direct transmission rate for low-infectiousness individuals in patch A
+b_D_BH <- 0.000015 * 0.5 / pBH # Direct transmission rate for high-infectiousness individuals in patch B
+b_D_BL <- 0.000015 * 0.5 / pBL # Direct transmission rate for low-infectiousness individuals in patch B
 b_W_A <- 0.05 # Indirect transmission rate for patch A
 b_W_B <- 0.05 # Indirect transmission rate for patch B
-alpha_AH <- 10 # Shedding rate for high-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
-alpha_AL <- 10 # Shedding rate for low-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
-alpha_BH <- 10 # Shedding rate for high-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
-alpha_BL <- 10 # Shedding rate for low-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+alpha_AH <- 10 * 0.5 / pAH # Shedding rate for high-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_AL <- 10 * 0.5 / pAL # Shedding rate for low-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_BH <- 10 * 0.5 / pBH # Shedding rate for high-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+alpha_BL <- 10 * 0.5 / pBL # Shedding rate for low-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
 tot_shed <- alpha_AH * N_A + alpha_AL * N_A + alpha_BH * N_B + alpha_BL * N_B # Total shedding from all individuals, for scaling
 xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day life span
   
 # Calculate non-dimensionalised parameters
-# Initial homogeneous model where ΣaβW/κ = ΣβD 
+# Initial homogeneous model where ΣaβW = ΣβD 
 paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
-          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A - scale by kappa for saturating effect
-          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B - scale by kappa for saturating effect
+          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A
+          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B
           kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
           pAH     = pAH,        # Equal proportion of high- and low-infectiousness individuals in patch A
           pAL     = pAL,
@@ -144,13 +144,13 @@ out = as.data.frame(out)
 # Plot outputs - same for both patches and infectiousness classes, so just plot one
 plot(x = out$time, y = out$SA, 
      ylab = "Fraction of population", xlab = "Time (days)", 
-     type = "l", ylim = c(0,1))
+     type = "l", ylim = c(0,1), cex.lab = 1.5)
 lines(x = out$time, y = out$IAH + out$IAL, col = "red") 
 lines(x = out$time, y = out$RA, col = "blue")
 lines(x = out$time, y = out$SB, col = "grey")
 lines(x = out$time, y = out$IBH + out$IBL, col = "pink") 
 lines(x = out$time, y = out$RB, col = "lightblue")
-legend(x = 0.8 * max(out$time), y = 0.9,                                
+legend(x = 0.8 * max(out$time), y = 0.65,                                
        legend = c("SA", "IA", "RA", "SB", "IB", "RB"),
        col = c("black", "red", "blue", "grey", "pink", "lightblue"),
        lty = 1,                                 # line type
@@ -272,7 +272,7 @@ get.R0(dfeparameters)
 get.outputs <- function(start, params){
   
   # Set times to run simulation for
-  times = seq(0, 365, by = 1)
+  times = seq(0, 365*3, by = 1)
   
   # Simulate dynamics
   out <- ode(y = start, times = times, func = msmod, parms = params)
@@ -304,8 +304,8 @@ get.outputs <- function(start, params){
   # Get R0
   R0 <- get.R0(dfeparameters)
   
-  # Calculate epidemic size - both patches recovered population after first outbreak
-  size <- max(out_summary$R)
+  # Calculate epidemic size - both patches recovered population after first outbreak - find average
+  size <- max(out_summary$R)/2
   
   # Calculate epidemic length
   length <- out_summary$time[which(out_summary$R == max(out_summary$R))]
@@ -316,6 +316,8 @@ get.outputs <- function(start, params){
   # Return list
   return(outputs)
 }
+
+get.outputs(start, paras)
 
 # Long-term Dynamics ----------------------------------------------
 
@@ -462,13 +464,17 @@ patch_het_R0_df$b_D <- b_Ds[patch_het_R0_df$b_D]/max(b_Ds) * 100
 # Plot heat map for R0s for different contributions of indirect and direct transmission - set gradients for comparison later
 ggplot(patch_het_R0_df, aes(x = b_W, y = b_D, fill = R0)) +
   geom_tile() +
-  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
-  #                      values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
-  #                      limits = c(1.2, 4)) +
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red", "purple"),
+                       values = rescale(c(0.8, 1.6, 2.4, 3.2, 4, 4.8)),
+                       limits = c(1.2, 4.8)) +
   labs(x = "% indirect transmission in patch A",
        y = "% direct transmission in patch A",
        fill = "R0") +
-  theme_minimal()
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
+
 
 # Wrangle to data frame of sizes
 patch_het_size_df <- melt(patch_het_size)
@@ -478,15 +484,18 @@ patch_het_size_df$b_W <- b_Ws[patch_het_size_df$b_W]/max(b_Ws) * 100
 patch_het_size_df$b_D <- b_Ds[patch_het_size_df$b_D]/max(b_Ds) * 100
 
 # Plot heat map for sizes for different contributions of indirect and direct transmission
-ggplot(patch_het_size_df, aes(x = b_W, y = b_D, fill = size/2)) +
+ggplot(patch_het_size_df, aes(x = b_W, y = b_D, fill = size)) +
   geom_tile() +
-  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
-  #                      values = rescale(c(0.5, 0.625, 0.75, 0.875, 1)),
-  #                      limits = c(0.5, 1)) +
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red"),
+                       values = rescale(c(0.4, 0.55, 0.7, 0.85, 1)),
+                       limits = c(0.4, 1)) +
   labs(x = "% indirect transmission in patch A",
        y = "% direct transmission in patch A",
        fill = "epidemic size") +
-  theme_minimal()
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
 
 # Wrangle to data frame of epidemic lengths
 patch_het_length_df <- melt(patch_het_length)
@@ -498,13 +507,16 @@ patch_het_length_df$b_D <- b_Ds[patch_het_length_df$b_D]/max(b_Ds) * 100
 # Plot heat map for epidemic lengths for different contributions of indirect and direct transmission
 ggplot(patch_het_length_df, aes(x = b_W, y = b_D, fill = epidemic_length)) +
   geom_tile() +
-  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
-  #                      values = rescale(c(80, 130, 180, 230, 280)),
-  #                      limits = c(80, 280)) +
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red"),
+                       values = rescale(c(80, 140, 200, 260, 320)),
+                       limits = c(80, 320)) +
   labs(x = "% indirect transmission in patch A",
        y = "% direct transmission in patch A",
        fill = "epidemic length") +
-  theme_minimal()
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
 
 # Direct transmission dominates
 
@@ -914,7 +926,13 @@ ggplot(indiv_het_R0_df, aes(x = pAH, y = pBH, fill = R0)) +
   labs(x = "proportion superspreaders in patch A",
        y = "proportion superspreaders in patch B",
        fill = "R0") +
-  theme_minimal()
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red"),
+                       values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
+                       limits = c(1.2, 4)) +
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
 
 # Wrangle to data frame of sizes
 indiv_het_size_df <- melt(indiv_het_size)
@@ -924,12 +942,18 @@ indiv_het_size_df$pAH <- pAHs[indiv_het_size_df$pAH]
 indiv_het_size_df$pBH <- pBHs[indiv_het_size_df$pBH]
 
 # Plot heat map for sizes for different proportions of superspreaders
-ggplot(indiv_het_size_df, aes(x = pAH, y = pBH, fill = epidemic_size/2)) +
+ggplot(indiv_het_size_df, aes(x = pAH, y = pBH, fill = epidemic_size)) +
   geom_tile() +
   labs(x = "proportion superspreaders in patch A",
        y = "proportion superspreaders in patch B",
        fill = "epidemic size") +
-  theme_minimal()
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red"),
+                       values = rescale(c(0.4, 0.55, 0.7, 0.85, 1)),
+                       limits = c(0.4, 1)) +
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
 
 # Wrangle to data frame of epidemic lengths
 indiv_het_length_df <- melt(indiv_het_length)
@@ -944,24 +968,30 @@ ggplot(indiv_het_length_df, aes(x = pAH, y = pBH, fill =  epidemic_length)) +
   labs(x = "proportion superspreaders in patch A",
        y = "proportion superspreaders in patch B",
        fill = "epidemic length") +
-  theme_minimal()
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red"),
+                       values = rescale(c(80, 140, 200, 260, 320)),
+                       limits = c(80, 320)) +
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
 
 
 # Both patch and individual-level heterogeneity ---------------------------
 
 # Vary degree of patch-level heterogeneity under conditions of individual-level heterogeneity 
-# Even individual heterogeneity - 20% superspreaders in both patches
+# Even individual heterogeneity - 5% superspreaders in both patches
 
 # Generate empty arrays for outputs
-patch_indiv_even_het_R0   <- array(data = NA, dim = c(100, 100))
-patch_indiv_even_het_size <- array(data = NA, dim = c(100, 100))
-patch_indiv_even_het_length <- array(data = NA, dim = c(100, 100))
+patch_indiv_even_het_R0   <- array(data = NA, dim = c(51, 51))
+patch_indiv_even_het_size <- array(data = NA, dim = c(51, 51))
+patch_indiv_even_het_length <- array(data = NA, dim = c(51, 51))
 
 # Set range of indirect transmission rates - bW values
-b_Ws <- seq(0, 0.1, length.out = 100)
+b_Ws <- seq(0, 0.1, length.out = 51)
 
 # Set range of direct transmission rates - bD values
-b_Ds <- seq(0, 0.00003, length.out = 100)
+b_Ds <- seq(0, 0.00003, length.out = 51)
 
 # Loop through transmission rates and calculate outputs
 for(i in 1:length(b_Ws)){
@@ -974,10 +1004,10 @@ for(i in 1:length(b_Ws)){
     # Set population sizes and original parameters inspired by Mukandivire et al.
     N_A <- 10000 # Patch A population size
     N_B <- 10000 # Patch B population size
-    pAH <- 0.2 # Biased proportion of high- and low-infectiousness individuals in patch A
-    pAL <- 0.8
-    pBH <- 0.2 # Biased proportion of high- and low-infectiousness individuals in patch B
-    pBL <- 0.8
+    pAH <- 0.05 # Biased proportion of high- and low-infectiousness individuals in patch A
+    pAL <- 0.95
+    pBH <- 0.05 # Biased proportion of high- and low-infectiousness individuals in patch B
+    pBL <- 0.95
     b_D_AH <- b_D * 0.5 / pAH # Direct transmission rate for high-infectiousness individuals in patch A
     b_D_AL <- b_D * 0.5 / pAL # Direct transmission rate for low-infectiousness individuals in patch A
     b_D_BH <- (max(b_Ds) - b_D) * 0.5 / pBH # Direct transmission rate for high-infectiousness individuals in patch B
@@ -996,10 +1026,10 @@ for(i in 1:length(b_Ws)){
               betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A
               betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B
               kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
-              pAH     = 0.5,        # Equal proportion of high- and low-infectiousness individuals in patch A
-              pAL     = 0.5,
-              pBH     = 0.5,        # Equal proportion of high- and low-infectiousness individuals in patch B
-              pBL     = 0.5,
+              pAH     = 0.1,        # Equal proportion of high- and low-infectiousness individuals in patch A
+              pAL     = 0.9,
+              pBH     = 0.1,        # Equal proportion of high- and low-infectiousness individuals in patch B
+              pBL     = 0.9,
               betaDAH = b_D_AH * N_A,       # Direct transmission rate for high-infectiousness individuals in patch A
               betaDAL = b_D_AL * N_A,       # Direct transmission rate for low-infectiousness individuals in patch A
               betaDBH = b_D_BH * N_B,       # Direct transmission rate for high-infectiousness individuals in patch B
@@ -1044,6 +1074,9 @@ for(i in 1:length(b_Ws)){
     patch_indiv_even_het_R0[i,j] <- outputs[1]
     patch_indiv_even_het_size[i,j] <- outputs[2]
     patch_indiv_even_het_length[i,j] <- outputs[3]
+    
+    # Print progress
+    print(i)
   }
 }
 
@@ -1058,13 +1091,16 @@ patch_indiv_even_het_R0_df$b_D <- b_Ds[patch_indiv_even_het_R0_df$b_D]/max(b_Ds)
 # Plot heat map for R0s for different contributions of indirect and direct transmission - set gradients for comparison later
 ggplot(patch_indiv_even_het_R0_df, aes(x = b_W, y = b_D, fill = R0)) +
   geom_tile() +
-  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
-  #                      values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
-  #                      limits = c(1.2, 4)) +
   labs(x = "% indirect transmission in patch A",
        y = "% direct transmission in patch A",
        fill = "R0") +
-  theme_minimal()
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red", "purple"),
+                       values = rescale(c(0.8, 1.6, 2.4, 3.2, 4, 4.8)),
+                       limits = c(1.2, 4.8)) +
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
 
 # Wrangle to data frame of sizes
 patch_indiv_even_het_size_df <- melt(patch_indiv_even_het_size)
@@ -1074,15 +1110,18 @@ patch_indiv_even_het_size_df$b_W <- b_Ws[patch_indiv_even_het_size_df$b_W]/max(b
 patch_indiv_even_het_size_df$b_D <- b_Ds[patch_indiv_even_het_size_df$b_D]/max(b_Ds) * 100
 
 # Plot heat map for sizes for different contributions of indirect and direct transmission
-ggplot(patch_indiv_even_het_size_df, aes(x = b_W, y = b_D, fill = size/2)) +
+ggplot(patch_indiv_even_het_size_df, aes(x = b_W, y = b_D, fill = size)) +
   geom_tile() +
-  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
-  #                      values = rescale(c(0.5, 0.625, 0.75, 0.875, 1)),
-  #                      limits = c(0.5, 1)) +
   labs(x = "% indirect transmission in patch A",
        y = "% direct transmission in patch A",
        fill = "epidemic size") +
-  theme_minimal()
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red"),
+                       values = rescale(c(0.4, 0.55, 0.7, 0.85, 1)),
+                       limits = c(0.4, 1)) +
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
 
 # Wrangle to data frame of epidemic lengths
 patch_indiv_even_het_length_df <- melt(patch_indiv_even_het_length)
@@ -1094,13 +1133,16 @@ patch_indiv_even_het_length_df$b_D <- b_Ds[patch_indiv_even_het_length_df$b_D]/m
 # Plot heat map for epidemic lengths for different contributions of indirect and direct transmission
 ggplot(patch_indiv_even_het_length_df, aes(x = b_W, y = b_D, fill = epidemic_length)) +
   geom_tile() +
-  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
-  #                      values = rescale(c(80, 130, 180, 230, 280)),
-  #                      limits = c(80, 280)) +
   labs(x = "% indirect transmission in patch A",
        y = "% direct transmission in patch A",
        fill = "epidemic length") +
-  theme_minimal()
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red"),
+                       values = rescale(c(80, 140, 200, 260, 320)),
+                       limits = c(80, 320)) +
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
 
 # Uneven individual heterogeneity - 5% superspreaders in patch A only, patch B homogeneous
 
@@ -1126,8 +1168,8 @@ for(i in 1:length(b_Ws)){
     # Set population sizes and original parameters inspired by Mukandivire et al.
     N_A <- 10000 # Patch A population size
     N_B <- 10000 # Patch B population size
-    pAH <- 0.2 # Biased proportion of high- and low-infectiousness individuals in patch A
-    pAL <- 0.8
+    pAH <- 0.1 # Biased proportion of high- and low-infectiousness individuals in patch A
+    pAL <- 0.9
     pBH <- 0.5 # Biased proportion of high- and low-infectiousness individuals in patch B
     pBL <- 0.5
     b_D_AH <- b_D * 0.5 / pAH # Direct transmission rate for high-infectiousness individuals in patch A
@@ -1352,7 +1394,13 @@ ggplot(indiv_patch_pos_cov_het_R0_df, aes(x = pAH, y = pBH, fill = R0)) +
   labs(x = "proportion superspreaders in patch A",
        y = "proportion superspreaders in patch B",
        fill = "R0") +
-  theme_minimal()
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red"),
+                       values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
+                       limits = c(1.2, 4)) +
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
 
 # Wrangle to data frame of sizes
 indiv_patch_pos_cov_het_size_df <- melt(indiv_patch_pos_cov_het_size)
@@ -1362,12 +1410,18 @@ indiv_patch_pos_cov_het_size_df$pAH <- pAHs[indiv_patch_pos_cov_het_size_df$pAH]
 indiv_patch_pos_cov_het_size_df$pBH <- pBHs[indiv_patch_pos_cov_het_size_df$pBH]
 
 # Plot heat map for sizes for different proportions of superspreaders
-ggplot(indiv_patch_pos_cov_het_size_df, aes(x = pAH, y = pBH, fill = epidemic_size/2)) +
+ggplot(indiv_patch_pos_cov_het_size_df, aes(x = pAH, y = pBH, fill = epidemic_size)) +
   geom_tile() +
   labs(x = "proportion superspreaders in patch A",
        y = "proportion superspreaders in patch B",
        fill = "epidemic size") +
-  theme_minimal()
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red"),
+                       values = rescale(c(0.4, 0.55, 0.7, 0.85, 1)),
+                       limits = c(0.4, 1)) +
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
 
 # Wrangle to data frame of epidemic lengths
 indiv_patch_pos_cov_het_length_df <- melt(indiv_patch_pos_cov_het_length)
@@ -1382,7 +1436,13 @@ ggplot(indiv_patch_pos_cov_het_length_df, aes(x = pAH, y = pBH, fill =  epidemic
   labs(x = "proportion superspreaders in patch A",
        y = "proportion superspreaders in patch B",
        fill = "epidemic length") +
-  theme_minimal()
+  scale_fill_gradientn(colors = c("turquoise", "green", "yellow", "orange", "red"),
+                       values = rescale(c(80, 140, 200, 260, 320)),
+                       limits = c(80, 320)) +
+  theme_minimal() +
+  theme(axis.title.x = element_text(size = 16), 
+        axis.title.y = element_text(size = 16),
+        legend.title = element_text(size = 16))
 
 # More direct transmission in patch A, more indirect transmission in patch B - direct and indirect negatively covary
 # Set proportions in infectiousness classes
@@ -1541,8 +1601,8 @@ xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day
 # Calculate non-dimensionalised parameters
 # Initial homogeneous model where ΣaβW/κ = ΣβD 
 paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
-          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A - scale by kappa for saturating effect
-          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B - scale by kappa for saturating effect
+          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A 
+          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B
           kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
           pAH     = 0.5,        # Equal proportion of high- and low-infectiousness individuals in patch A
           pAL     = 0.5,
@@ -1652,8 +1712,8 @@ xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day
 
 # Calculate non-dimensionalised parameters
 paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
-          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A - scale by kappa for saturating effect
-          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B - scale by kappa for saturating effect
+          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A
+          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B
           kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
           pAH     = 0.5,        # Equal proportion of high- and low-infectiousness individuals in patch A
           pAL     = 0.5,
@@ -1724,8 +1784,8 @@ xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day
 
 # Calculate non-dimensionalised parameters
 paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
-          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A - scale by kappa for saturating effect
-          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B - scale by kappa for saturating effect
+          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A 
+          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B 
           kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
           pAH     = 0.5,        # Equal proportion of high- and low-infectiousness individuals in patch A
           pAL     = 0.5,
@@ -1796,8 +1856,8 @@ xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day
 
 # Calculate non-dimensionalised parameters
 paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
-          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A - scale by kappa for saturating effect
-          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B - scale by kappa for saturating effect
+          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A 
+          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B 
           kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
           pAH     = 0.5,        # Equal proportion of high- and low-infectiousness individuals in patch A
           pAL     = 0.5,
@@ -1814,7 +1874,6 @@ paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
           aBH     = alpha_BH * N_B / tot_shed,  # Shedding rate from high-infectiousness individuals in patch B; scaled as proportion of total shedding
           aBL     = alpha_BL * N_B / tot_shed,  # Shedding rate from low-infectiousness individuals in patch B; scaled as proportion of total shedding
           xi      = xi)     # Rate of loss of bacteria from the environmental reservoir - 30 day life span
-
 
 # Simulate dynamics
 out <- ode(y = start, times = times, func = msmod, parms = paras)
@@ -1849,10 +1908,10 @@ plot(x = out$time, y = out$W * tot_shed/xi, col = "purple", type = "l",
 # Set population sizes and original parameters inspired by Mukandivire et al.
 N_A <- 10000 # Patch A population size
 N_B <- 10000 # Patch B population size
-pAH <- 0.8 # Equal proportion of high- and low-infectiousness individuals in patch A
-pAL <- 0.2
-pBH <- 0.8 # Equal proportion of high- and low-infectiousness individuals in patch B
-pBL <- 0.2
+pAH <- 0.9 # Equal proportion of high- and low-infectiousness individuals in patch A
+pAL <- 0.1
+pBH <- 0.9 # Equal proportion of high- and low-infectiousness individuals in patch B
+pBL <- 0.1
 b_D_AH <- 0.000015 * 0.5 / pAH # Direct transmission rate for high-infectiousness individuals in patch A
 b_D_AL <- 0.000015 * 0.5 / pAL # Direct transmission rate for low-infectiousness individuals in patch A
 b_D_BH <- 0.000015 * 0.5 / pBH # Direct transmission rate for high-infectiousness individuals in patch B
@@ -1868,8 +1927,8 @@ xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day
 
 # Calculate non-dimensionalised parameters
 paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
-          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A - scale by kappa for saturating effect
-          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B - scale by kappa for saturating effect
+          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A 
+          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B 
           kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
           pAH     = 0.5,        # Equal proportion of high- and low-infectiousness individuals in patch A
           pAL     = 0.5,
@@ -1918,3 +1977,732 @@ plot(x = out$time, y = out$W * tot_shed/xi, col = "purple", type = "l",
      xlab = "Time (days)", ylab = "Bacterial concentration in water")
 
 
+# Simple interventions ----------------------------------------------------
+# Calculate relative change in R0, timing and size under different targeted scenarios
+
+# Set total intervention level
+int_lvl <- 0.5 # in total, 50% reduction in transmission and shedding rates overall
+
+# Homogeneous case
+# Calculate reference R0, size and length
+# Calculate times
+times = seq(0, 365, by = 1)
+
+# Set population sizes and original parameters - homogeneous case
+N_A <- 10000 # Patch A population size
+N_B <- 10000 # Patch B population size
+pAH <- 0.5 # Equal proportion of high- and low-infectiousness individuals in patch A
+pAL <- 0.5
+pBH <- 0.5 # Equal proportion of high- and low-infectiousness individuals in patch B
+pBL <- 0.5
+b_D_AH <- 0.000015 # Direct transmission rate for high-infectiousness individuals in patch A
+b_D_AL <- 0.000015 # Direct transmission rate for low-infectiousness individuals in patch A
+b_D_BH <- 0.000015 # Direct transmission rate for high-infectiousness individuals in patch B
+b_D_BL <- 0.000015 # Direct transmission rate for low-infectiousness individuals in patch B
+b_W_A <- 0.05 # Indirect transmission rate for patch A
+b_W_B <- 0.05 # Indirect transmission rate for patch B
+alpha_AH <- 10 # Shedding rate for high-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_AL <- 10 # Shedding rate for low-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_BH <- 10 # Shedding rate for high-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+alpha_BL <- 10 # Shedding rate for low-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+tot_shed <- alpha_AH * N_A + alpha_AL * N_A + alpha_BH * N_B + alpha_BL * N_B # Total shedding from all individuals, for scaling
+xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+
+# Calculate non-dimensionalised parameters
+# Initial homogeneous model where ΣaβW/κ = ΣβD 
+paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
+          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A 
+          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B 
+          kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
+          pAH     = pAH,        # Equal proportion of high- and low-infectiousness individuals in patch A
+          pAL     = pAL,
+          pBH     = pBH,        # Equal proportion of high- and low-infectiousness individuals in patch B
+          pBL     = pBL,
+          betaDAH = b_D_AH * N_A,       # Direct transmission rate for high-infectiousness individuals in patch A
+          betaDAL = b_D_AL * N_A,       # Direct transmission rate for low-infectiousness individuals in patch A
+          betaDBH = b_D_BH * N_B,       # Direct transmission rate for high-infectiousness individuals in patch B
+          betaDBL = b_D_BL * N_B,       # Direct transmission rate for low-infectiousness individuals in patch B
+          zeta    = 0, # Inter-patch mixing cut off for now
+          gamma   = 1/5, # Duration of infection of 5 days
+          aAH     = alpha_AH * N_A / tot_shed,  # Shedding rate from high-infectiousness individuals in patch A; scaled as proportion of total shedding
+          aAL     = alpha_AL * N_A / tot_shed,  # Shedding rate from low-infectiousness individuals in patch A; scaled as proportion of total shedding
+          aBH     = alpha_BH * N_B / tot_shed,  # Shedding rate from high-infectiousness individuals in patch B; scaled as proportion of total shedding
+          aBL     = alpha_BL * N_B / tot_shed,  # Shedding rate from low-infectiousness individuals in patch B; scaled as proportion of total shedding
+          xi      = xi)     # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+
+# Set initial conditions - epidemic conditions
+start <- c(SA  = 0.99,  # Susceptibles in patch A
+           IAH = 0.005, # High-infectiousness infectious individuals in patch A
+           IAL = 0.005, # Low-infectiousness infectious individuals in patch A
+           RA  = 0,     # Recovered-and-immune individuals in patch A
+           SB  = 0.99,  # Susceptibles in patch B
+           IBH = 0.005, # High-infectiousness infectious individuals in patch B
+           IBL = 0.005, # Low-infectiousness infectious individuals in patch B
+           RB  = 0,     # Recovered-and-immune individuals in patch B
+           W   = 0)  # Bacterial concentration in the environmental reservoir
+
+# Get outputs 
+ref_outputs <- get.outputs(start = start, params = paras)
+
+# Set degrees of patch-level targeting
+patch_tgt_lvls <- seq(0, 1, length.out = 51)
+
+# Set degrees of individual-level targeting
+indiv_tgt_lvls <- seq(0, 1, length.out = 51)
+
+# Set empty data frames to store results
+homo_tgt_R0     <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+homo_tgt_size   <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+homo_tgt_length <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+
+# Run through different levels of targeting intervention and calculate changes in outputs
+for(i in 1:length(patch_tgt_lvls)){
+  patch_tgt_lvl <- patch_tgt_lvls[i]
+  
+  for(j in 1: length(indiv_tgt_lvls)){
+    indiv_tgt_lvl <- indiv_tgt_lvls[j]
+    
+    paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
+              betaWA  = b_W_A * tot_shed / xi * (1 - (patch_tgt_lvl * int_lvl)),        # Indirect transmission rate to patch A
+              betaWB  = b_W_B * tot_shed / xi * (1 - ((1 - patch_tgt_lvl) * int_lvl)),        # Indirect transmission rate to patch B
+              kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
+              pAH     = pAH,        # Equal proportion of high- and low-infectiousness individuals in patch A
+              pAL     = pAL,
+              pBH     = pBH,        # Equal proportion of high- and low-infectiousness individuals in patch B
+              pBL     = pBL,
+              betaDAH = b_D_AH * N_A * (1 - patch_tgt_lvl * indiv_tgt_lvl * int_lvl),       # Direct transmission rate for high-infectiousness individuals in patch A
+              betaDAL = b_D_AL * N_A * (1 - patch_tgt_lvl * (1 - indiv_tgt_lvl) * int_lvl),       # Direct transmission rate for low-infectiousness individuals in patch A
+              betaDBH = b_D_BH * N_B * (1 - (1 - patch_tgt_lvl) * indiv_tgt_lvl * int_lvl),       # Direct transmission rate for high-infectiousness individuals in patch B
+              betaDBL = b_D_BL * N_B * (1 - (1 - patch_tgt_lvl) * (1 - indiv_tgt_lvl) * int_lvl),       # Direct transmission rate for low-infectiousness individuals in patch B
+              zeta    = 0, # Inter-patch mixing cut off for now
+              gamma   = 1/5, # Duration of infection of 5 days
+              aAH     = alpha_AH * N_A / tot_shed * (1 - patch_tgt_lvl * indiv_tgt_lvl * int_lvl),  # Shedding rate from high-infectiousness individuals in patch A; scaled as proportion of total shedding
+              aAL     = alpha_AL * N_A / tot_shed * (1 - patch_tgt_lvl * (1 - indiv_tgt_lvl) * int_lvl),  # Shedding rate from low-infectiousness individuals in patch A; scaled as proportion of total shedding
+              aBH     = alpha_BH * N_B / tot_shed * (1 - (1 - patch_tgt_lvl) * indiv_tgt_lvl * int_lvl),  # Shedding rate from high-infectiousness individuals in patch B; scaled as proportion of total shedding
+              aBL     = alpha_BL * N_B / tot_shed * (1 - (1 - patch_tgt_lvl) * (1 - indiv_tgt_lvl) * int_lvl),  # Shedding rate from low-infectiousness individuals in patch B; scaled as proportion of total shedding
+              xi      = xi)     # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+    
+    # Set initial conditions - epidemic conditions
+    start <- c(SA  = 0.99,  # Susceptibles in patch A
+               IAH = 0.005, # High-infectiousness infectious individuals in patch A
+               IAL = 0.005, # Low-infectiousness infectious individuals in patch A
+               RA  = 0,     # Recovered-and-immune individuals in patch A
+               SB  = 0.99,  # Susceptibles in patch B
+               IBH = 0.005, # High-infectiousness infectious individuals in patch B
+               IBL = 0.005, # Low-infectiousness infectious individuals in patch B
+               RB  = 0,     # Recovered-and-immune individuals in patch B
+               W   = 0)  # Bacterial concentration in the environmental reservoir
+    
+   # Get outputs
+   outputs <- get.outputs(start = start, params = paras)
+  
+   # Store results, relative to reference - (new - ref) / ref * 100 = % change in output relative to reference
+   homo_tgt_R0[i, j] <- (outputs[1] - ref_outputs[1]) / ref_outputs[1]
+   homo_tgt_size[i, j] <- (outputs[2] - ref_outputs[2]) / ref_outputs[2]
+   homo_tgt_length[i, j] <- (outputs[3] - ref_outputs[3]) / ref_outputs[3]
+   
+   # Print i for tracking
+   print(i)
+  }
+}
+
+# Plot outputs
+# Wrangle to data frame of R0s
+homo_tgt_R0_df <- melt(homo_tgt_R0)
+names(homo_tgt_R0_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "R0")
+# Map to actual x/y variable values
+homo_tgt_R0_df$patch_tgt_lvl <- patch_tgt_lvls[homo_tgt_R0_df$patch_tgt_lvl]
+homo_tgt_R0_df$indiv_tgt_lvl <- indiv_tgt_lvls[homo_tgt_R0_df$indiv_tgt_lvl]
+
+# Plot heat map for R0s for different degrees of patch- and individual-level targeting
+ggplot(homo_tgt_R0_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = R0)) +
+  geom_tile() +
+  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
+  #                      values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
+  #                      limits = c(1.2, 4)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% change in R0 vs no intervention") +
+  theme_minimal()
+
+# Wrangle to data frame of sizes
+homo_tgt_size_df <- melt(homo_tgt_size)
+names(homo_tgt_size_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "size")
+# Map to actual x/y variable values
+homo_tgt_size_df$patch_tgt_lvl <- patch_tgt_lvls[homo_tgt_size_df$patch_tgt_lvl]
+homo_tgt_size_df$indiv_tgt_lvl <- indiv_tgt_lvls[homo_tgt_size_df$indiv_tgt_lvl]
+
+# Plot heat map for sizes for different degrees of patch- and individual-level targeting
+ggplot(homo_tgt_size_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = -size)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = c("purple", "red", "orange", "yellow", "green", "turquoise"),
+                       values = rescale(c(0.17, 0.2, 0.23, 0.26, 0.29, 0.32)),
+                       limits = c(0.17, 0.32)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% reduction in size vs no intervention") +
+  theme_minimal() +
+  theme(axis.title = element_text(size = 16),
+        legend.title = element_text(size = 16))
+
+
+# Wrangle to data frame of lengths
+homo_tgt_length_df <- melt(homo_tgt_length)
+names(homo_tgt_length_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "length")
+# Map to actual x/y variable values
+homo_tgt_length_df$patch_tgt_lvl <- patch_tgt_lvls[homo_tgt_length_df$patch_tgt_lvl]
+homo_tgt_length_df$indiv_tgt_lvl <- indiv_tgt_lvls[homo_tgt_length_df$indiv_tgt_lvl]
+
+# Plot heat map for lengths for different degrees of patch- and individual-level targeting
+ggplot(homo_tgt_length_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = length)) +
+  geom_tile() +
+  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
+  #                      values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
+  #                      limits = c(1.2, 4)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% change in length vs no intervention") +
+  theme_minimal()
+
+
+# Patch-level heterogeneity - more direct and indirect transmission in patch A (positive covariance, more likely)
+# Calculate reference R0, size and length
+# Calculate times
+times = seq(0, 365, by = 1)
+
+# Set population sizes and original parameters - patch-level heterogeneous case
+N_A <- 10000 # Patch A population size
+N_B <- 10000 # Patch B population size
+pAH <- 0.5 # Proportion of high- and low-infectiousness individuals in patch A
+pAL <- 0.5
+pBH <- 0.5 # Proportion of high- and low-infectiousness individuals in patch B
+pBL <- 0.5
+b_D_AH <- 0.0000225 # Direct transmission rate for high-infectiousness individuals in patch A
+b_D_AL <- 0.0000225 # Direct transmission rate for low-infectiousness individuals in patch A
+b_D_BH <- 0.0000075 # Direct transmission rate for high-infectiousness individuals in patch B
+b_D_BL <- 0.0000075 # Direct transmission rate for low-infectiousness individuals in patch B
+b_W_A <- 0.075 # Indirect transmission rate for patch A
+b_W_B <- 0.025 # Indirect transmission rate for patch B
+alpha_AH <- 10 # Shedding rate for high-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_AL <- 10 # Shedding rate for low-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_BH <- 10 # Shedding rate for high-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+alpha_BL <- 10 # Shedding rate for low-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+tot_shed <- alpha_AH * N_A + alpha_AL * N_A + alpha_BH * N_B + alpha_BL * N_B # Total shedding from all individuals, for scaling
+xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+
+# Calculate non-dimensionalised parameters
+paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
+          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A 
+          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B 
+          kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
+          pAH     = pAH,        # Equal proportion of high- and low-infectiousness individuals in patch A
+          pAL     = pAL,
+          pBH     = pBH,        # Equal proportion of high- and low-infectiousness individuals in patch B
+          pBL     = pBL,
+          betaDAH = b_D_AH * N_A,       # Direct transmission rate for high-infectiousness individuals in patch A
+          betaDAL = b_D_AL * N_A,       # Direct transmission rate for low-infectiousness individuals in patch A
+          betaDBH = b_D_BH * N_B,       # Direct transmission rate for high-infectiousness individuals in patch B
+          betaDBL = b_D_BL * N_B,       # Direct transmission rate for low-infectiousness individuals in patch B
+          zeta    = 0, # Inter-patch mixing cut off for now
+          gamma   = 1/5, # Duration of infection of 5 days
+          aAH     = alpha_AH * N_A / tot_shed,  # Shedding rate from high-infectiousness individuals in patch A; scaled as proportion of total shedding
+          aAL     = alpha_AL * N_A / tot_shed,  # Shedding rate from low-infectiousness individuals in patch A; scaled as proportion of total shedding
+          aBH     = alpha_BH * N_B / tot_shed,  # Shedding rate from high-infectiousness individuals in patch B; scaled as proportion of total shedding
+          aBL     = alpha_BL * N_B / tot_shed,  # Shedding rate from low-infectiousness individuals in patch B; scaled as proportion of total shedding
+          xi      = xi)     # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+
+# Set initial conditions - epidemic conditions
+start <- c(SA  = 0.99,  # Susceptibles in patch A
+           IAH = 0.005, # High-infectiousness infectious individuals in patch A
+           IAL = 0.005, # Low-infectiousness infectious individuals in patch A
+           RA  = 0,     # Recovered-and-immune individuals in patch A
+           SB  = 0.99,  # Susceptibles in patch B
+           IBH = 0.005, # High-infectiousness infectious individuals in patch B
+           IBL = 0.005, # Low-infectiousness infectious individuals in patch B
+           RB  = 0,     # Recovered-and-immune individuals in patch B
+           W   = 0)  # Bacterial concentration in the environmental reservoir
+
+# Get outputs 
+ref_outputs <- get.outputs(start = start, params = paras)
+
+# Set degrees of patch-level targeting
+patch_tgt_lvls <- seq(0, 1, length.out = 51)
+
+# Set degrees of individual-level targeting
+indiv_tgt_lvls <- seq(0, 1, length.out = 51)
+
+# Set empty data frames to store results
+patch_het_tgt_R0     <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+patch_het_tgt_size   <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+patch_het_tgt_length <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+
+# Run through different levels of targeting intervention and calculate changes in outputs
+for(i in 1:length(patch_tgt_lvls)){
+  patch_tgt_lvl <- patch_tgt_lvls[i]
+  
+  for(j in 1: length(indiv_tgt_lvls)){
+    indiv_tgt_lvl <- indiv_tgt_lvls[j]
+    
+    paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
+              betaWA  = b_W_A * tot_shed / xi * (1 - (patch_tgt_lvl * int_lvl)),        # Indirect transmission rate to patch A
+              betaWB  = b_W_B * tot_shed / xi * (1 - ((1 - patch_tgt_lvl) * int_lvl)),        # Indirect transmission rate to patch B
+              kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
+              pAH     = pAH,        # Equal proportion of high- and low-infectiousness individuals in patch A
+              pAL     = pAL,
+              pBH     = pBH,        # Equal proportion of high- and low-infectiousness individuals in patch B
+              pBL     = pBL,
+              betaDAH = b_D_AH * N_A * (1 - patch_tgt_lvl * indiv_tgt_lvl * int_lvl),       # Direct transmission rate for high-infectiousness individuals in patch A
+              betaDAL = b_D_AL * N_A * (1 - patch_tgt_lvl * (1 - indiv_tgt_lvl) * int_lvl),       # Direct transmission rate for low-infectiousness individuals in patch A
+              betaDBH = b_D_BH * N_B * (1 - (1 - patch_tgt_lvl) * indiv_tgt_lvl * int_lvl),       # Direct transmission rate for high-infectiousness individuals in patch B
+              betaDBL = b_D_BL * N_B * (1 - (1 - patch_tgt_lvl) * (1 - indiv_tgt_lvl) * int_lvl),       # Direct transmission rate for low-infectiousness individuals in patch B
+              zeta    = 0, # Inter-patch mixing cut off for now
+              gamma   = 1/5, # Duration of infection of 5 days
+              aAH     = alpha_AH * N_A / tot_shed * (1 - patch_tgt_lvl * indiv_tgt_lvl * int_lvl),  # Shedding rate from high-infectiousness individuals in patch A; scaled as proportion of total shedding
+              aAL     = alpha_AL * N_A / tot_shed * (1 - patch_tgt_lvl * (1 - indiv_tgt_lvl) * int_lvl),  # Shedding rate from low-infectiousness individuals in patch A; scaled as proportion of total shedding
+              aBH     = alpha_BH * N_B / tot_shed * (1 - (1 - patch_tgt_lvl) * indiv_tgt_lvl * int_lvl),  # Shedding rate from high-infectiousness individuals in patch B; scaled as proportion of total shedding
+              aBL     = alpha_BL * N_B / tot_shed * (1 - (1 - patch_tgt_lvl) * (1 - indiv_tgt_lvl) * int_lvl),  # Shedding rate from low-infectiousness individuals in patch B; scaled as proportion of total shedding
+              xi      = xi)     # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+    
+    # Set initial conditions - epidemic conditions
+    start <- c(SA  = 0.99,  # Susceptibles in patch A
+               IAH = 0.005, # High-infectiousness infectious individuals in patch A
+               IAL = 0.005, # Low-infectiousness infectious individuals in patch A
+               RA  = 0,     # Recovered-and-immune individuals in patch A
+               SB  = 0.99,  # Susceptibles in patch B
+               IBH = 0.005, # High-infectiousness infectious individuals in patch B
+               IBL = 0.005, # Low-infectiousness infectious individuals in patch B
+               RB  = 0,     # Recovered-and-immune individuals in patch B
+               W   = 0)  # Bacterial concentration in the environmental reservoir
+    
+    # Get outputs
+    outputs <- get.outputs(start = start, params = paras)
+    
+    # Store results, relative to reference - (new - ref) / ref * 100 = % change in output relative to reference
+    patch_het_tgt_R0[i, j] <- (outputs[1] - ref_outputs[1]) / ref_outputs[1]
+    patch_het_tgt_size[i, j] <- (outputs[2] - ref_outputs[2]) / ref_outputs[2]
+    patch_het_tgt_length[i, j] <- (outputs[3] - ref_outputs[3]) / ref_outputs[3]
+    
+    # Print i for tracking
+    print(i)
+  }
+}
+
+# Plot outputs
+# Wrangle to data frame of R0s
+patch_het_tgt_R0_df <- melt(patch_het_tgt_R0)
+names(patch_het_tgt_R0_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "R0")
+# Map to actual x/y variable values
+patch_het_tgt_R0_df$patch_tgt_lvl <- patch_tgt_lvls[patch_het_tgt_R0_df$patch_tgt_lvl]
+patch_het_tgt_R0_df$indiv_tgt_lvl <- indiv_tgt_lvls[patch_het_tgt_R0_df$indiv_tgt_lvl]
+
+# Plot heat map for R0s for different degrees of patch- and individual-level targeting
+ggplot(patch_het_tgt_R0_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = R0)) +
+  geom_tile() +
+  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
+  #                      values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
+  #                      limits = c(1.2, 4)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% change in R0 vs no intervention") +
+  theme_minimal()
+
+# Wrangle to data frame of sizes
+patch_het_tgt_size_df <- melt(patch_het_tgt_size)
+names(patch_het_tgt_size_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "size")
+# Map to actual x/y variable values
+patch_het_tgt_size_df$patch_tgt_lvl <- patch_tgt_lvls[patch_het_tgt_size_df$patch_tgt_lvl]
+patch_het_tgt_size_df$indiv_tgt_lvl <- indiv_tgt_lvls[patch_het_tgt_size_df$indiv_tgt_lvl]
+
+# Plot heat map for sizes for different degrees of patch- and individual-level targeting
+ggplot(patch_het_tgt_size_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = -size)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = c("purple", "red", "orange", "yellow", "green", "turquoise"),
+                       values = rescale(c(0.17, 0.2, 0.23, 0.26, 0.29, 0.32)),
+                       limits = c(0.17, 0.32)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% reduction in size vs no intervention") +
+  theme_minimal() +
+  theme(axis.title = element_text(size = 16),
+        legend.title = element_text(size = 16))
+
+
+
+# Wrangle to data frame of lengths
+patch_het_tgt_length_df <- melt(patch_het_tgt_length)
+names(patch_het_tgt_length_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "length")
+# Map to actual x/y variable values
+patch_het_tgt_length_df$patch_tgt_lvl <- patch_tgt_lvls[patch_het_tgt_length_df$patch_tgt_lvl]
+patch_het_tgt_length_df$indiv_tgt_lvl <- indiv_tgt_lvls[patch_het_tgt_length_df$indiv_tgt_lvl]
+
+# Plot heat map for lengths for different degrees of patch- and individual-level targeting
+ggplot(patch_het_tgt_length_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = length)) +
+  geom_tile() +
+  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
+  #                      values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
+  #                      limits = c(1.2, 4)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% change in length vs no intervention") +
+  theme_minimal()
+
+# Individual-level heterogeneity
+# Calculate reference R0, size and length
+# Calculate times
+times = seq(0, 365, by = 1)
+
+# Set population sizes and original parameters - patch-level heterogeneous case
+N_A <- 10000 # Patch A population size
+N_B <- 10000 # Patch B population size
+pAH <- 0.95 # Proportion of high- and low-infectiousness individuals in patch A
+pAL <- 0.05
+pBH <- 0.95 # Proportion of high- and low-infectiousness individuals in patch B
+pBL <- 0.05
+b_D_AH <- 0.000015 * 0.5 / pAH # Direct transmission rate for high-infectiousness individuals in patch A
+b_D_AL <- 0.000015 * 0.5 / pAL # Direct transmission rate for low-infectiousness individuals in patch A
+b_D_BH <- 0.000015 * 0.5 / pBH # Direct transmission rate for high-infectiousness individuals in patch B
+b_D_BL <- 0.000015 * 0.5 / pBL # Direct transmission rate for low-infectiousness individuals in patch B
+b_W_A <- 0.05 # Indirect transmission rate for patch A
+b_W_B <- 0.05 # Indirect transmission rate for patch B
+alpha_AH <- 10 * 0.5 / pAH # Shedding rate for high-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_AL <- 10 * 0.5 / pAL # Shedding rate for low-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_BH <- 10 * 0.5 / pBH # Shedding rate for high-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+alpha_BL <- 10 * 0.5 / pBL # Shedding rate for low-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+tot_shed <- alpha_AH * N_A + alpha_AL * N_A + alpha_BH * N_B + alpha_BL * N_B # Total shedding from all individuals, for scaling
+xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+
+# Calculate non-dimensionalised parameters
+paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
+          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A 
+          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B 
+          kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
+          pAH     = pAH,        # Equal proportion of high- and low-infectiousness individuals in patch A
+          pAL     = pAL,
+          pBH     = pBH,        # Equal proportion of high- and low-infectiousness individuals in patch B
+          pBL     = pBL,
+          betaDAH = b_D_AH * N_A,       # Direct transmission rate for high-infectiousness individuals in patch A
+          betaDAL = b_D_AL * N_A,       # Direct transmission rate for low-infectiousness individuals in patch A
+          betaDBH = b_D_BH * N_B,       # Direct transmission rate for high-infectiousness individuals in patch B
+          betaDBL = b_D_BL * N_B,       # Direct transmission rate for low-infectiousness individuals in patch B
+          zeta    = 0, # Inter-patch mixing cut off for now
+          gamma   = 1/5, # Duration of infection of 5 days
+          aAH     = alpha_AH * N_A / tot_shed,  # Shedding rate from high-infectiousness individuals in patch A; scaled as proportion of total shedding
+          aAL     = alpha_AL * N_A / tot_shed,  # Shedding rate from low-infectiousness individuals in patch A; scaled as proportion of total shedding
+          aBH     = alpha_BH * N_B / tot_shed,  # Shedding rate from high-infectiousness individuals in patch B; scaled as proportion of total shedding
+          aBL     = alpha_BL * N_B / tot_shed,  # Shedding rate from low-infectiousness individuals in patch B; scaled as proportion of total shedding
+          xi      = xi)     # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+
+# Set initial conditions - epidemic conditions
+start <- c(SA  = 0.99,  # Susceptibles in patch A
+           IAH = 0.005, # High-infectiousness infectious individuals in patch A
+           IAL = 0.005, # Low-infectiousness infectious individuals in patch A
+           RA  = 0,     # Recovered-and-immune individuals in patch A
+           SB  = 0.99,  # Susceptibles in patch B
+           IBH = 0.005, # High-infectiousness infectious individuals in patch B
+           IBL = 0.005, # Low-infectiousness infectious individuals in patch B
+           RB  = 0,     # Recovered-and-immune individuals in patch B
+           W   = 0)  # Bacterial concentration in the environmental reservoir
+
+# Get outputs 
+ref_outputs <- get.outputs(start = start, params = paras)
+
+# Set degrees of patch-level targeting
+patch_tgt_lvls <- seq(0, 1, length.out = 51)
+
+# Set degrees of individual-level targeting
+indiv_tgt_lvls <- seq(0, 1, length.out = 51)
+
+# Set empty data frames to store results
+indiv_het_tgt_R0     <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+indiv_het_tgt_size   <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+indiv_het_tgt_length <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+
+# Run through different levels of targeting intervention and calculate changes in outputs
+for(i in 1:length(patch_tgt_lvls)){
+  patch_tgt_lvl <- patch_tgt_lvls[i]
+  
+  for(j in 1: length(indiv_tgt_lvls)){
+    indiv_tgt_lvl <- indiv_tgt_lvls[j]
+    
+    paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
+              betaWA  = b_W_A * tot_shed / xi * (1 - (patch_tgt_lvl * int_lvl)),        # Indirect transmission rate to patch A
+              betaWB  = b_W_B * tot_shed / xi * (1 - ((1 - patch_tgt_lvl) * int_lvl)),        # Indirect transmission rate to patch B
+              kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
+              pAH     = pAH,        # Equal proportion of high- and low-infectiousness individuals in patch A
+              pAL     = pAL,
+              pBH     = pBH,        # Equal proportion of high- and low-infectiousness individuals in patch B
+              pBL     = pBL,
+              betaDAH = b_D_AH * N_A * (1 - patch_tgt_lvl * indiv_tgt_lvl * int_lvl),       # Direct transmission rate for high-infectiousness individuals in patch A
+              betaDAL = b_D_AL * N_A * (1 - patch_tgt_lvl * (1 - indiv_tgt_lvl) * int_lvl),       # Direct transmission rate for low-infectiousness individuals in patch A
+              betaDBH = b_D_BH * N_B * (1 - (1 - patch_tgt_lvl) * indiv_tgt_lvl * int_lvl),       # Direct transmission rate for high-infectiousness individuals in patch B
+              betaDBL = b_D_BL * N_B * (1 - (1 - patch_tgt_lvl) * (1 - indiv_tgt_lvl) * int_lvl),       # Direct transmission rate for low-infectiousness individuals in patch B
+              zeta    = 0, # Inter-patch mixing cut off for now
+              gamma   = 1/5, # Duration of infection of 5 days
+              aAH     = alpha_AH * N_A / tot_shed * (1 - patch_tgt_lvl * indiv_tgt_lvl * int_lvl),  # Shedding rate from high-infectiousness individuals in patch A; scaled as proportion of total shedding
+              aAL     = alpha_AL * N_A / tot_shed * (1 - patch_tgt_lvl * (1 - indiv_tgt_lvl) * int_lvl),  # Shedding rate from low-infectiousness individuals in patch A; scaled as proportion of total shedding
+              aBH     = alpha_BH * N_B / tot_shed * (1 - (1 - patch_tgt_lvl) * indiv_tgt_lvl * int_lvl),  # Shedding rate from high-infectiousness individuals in patch B; scaled as proportion of total shedding
+              aBL     = alpha_BL * N_B / tot_shed * (1 - (1 - patch_tgt_lvl) * (1 - indiv_tgt_lvl) * int_lvl),  # Shedding rate from low-infectiousness individuals in patch B; scaled as proportion of total shedding
+              xi      = xi)     # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+    
+    # Set initial conditions - epidemic conditions
+    start <- c(SA  = 0.99,  # Susceptibles in patch A
+               IAH = 0.005, # High-infectiousness infectious individuals in patch A
+               IAL = 0.005, # Low-infectiousness infectious individuals in patch A
+               RA  = 0,     # Recovered-and-immune individuals in patch A
+               SB  = 0.99,  # Susceptibles in patch B
+               IBH = 0.005, # High-infectiousness infectious individuals in patch B
+               IBL = 0.005, # Low-infectiousness infectious individuals in patch B
+               RB  = 0,     # Recovered-and-immune individuals in patch B
+               W   = 0)  # Bacterial concentration in the environmental reservoir
+    
+    # Get outputs
+    outputs <- get.outputs(start = start, params = paras)
+    
+    # Store results, relative to reference - (new - ref) / ref * 100 = % change in output relative to reference
+    indiv_het_tgt_R0[i, j] <- (outputs[1] - ref_outputs[1]) / ref_outputs[1]
+    indiv_het_tgt_size[i, j] <- (outputs[2] - ref_outputs[2]) / ref_outputs[2]
+    indiv_het_tgt_length[i, j] <- (outputs[3] - ref_outputs[3]) / ref_outputs[3]
+    
+    # Print i for tracking
+    print(i)
+  }
+}
+
+# Plot outputs
+# Wrangle to data frame of R0s
+indiv_het_tgt_R0_df <- melt(indiv_het_tgt_R0)
+names(indiv_het_tgt_R0_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "R0")
+# Map to actual x/y variable values
+indiv_het_tgt_R0_df$patch_tgt_lvl <- patch_tgt_lvls[indiv_het_tgt_R0_df$patch_tgt_lvl]
+indiv_het_tgt_R0_df$indiv_tgt_lvl <- indiv_tgt_lvls[indiv_het_tgt_R0_df$indiv_tgt_lvl]
+
+# Plot heat map for R0s for different degrees of patch- and individual-level targeting
+ggplot(indiv_het_tgt_R0_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = R0)) +
+  geom_tile() +
+  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
+  #                      values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
+  #                      limits = c(1.2, 4)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% change in R0 vs no intervention") +
+  theme_minimal()
+
+# Wrangle to data frame of sizes
+indiv_het_tgt_size_df <- melt(indiv_het_tgt_size)
+names(indiv_het_tgt_size_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "size")
+# Map to actual x/y variable values
+indiv_het_tgt_size_df$patch_tgt_lvl <- patch_tgt_lvls[indiv_het_tgt_size_df$patch_tgt_lvl]
+indiv_het_tgt_size_df$indiv_tgt_lvl <- indiv_tgt_lvls[indiv_het_tgt_size_df$indiv_tgt_lvl]
+
+# Plot heat map for sizes for different degrees of patch- and individual-level targeting
+ggplot(indiv_het_tgt_size_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = -size)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = c("purple", "red", "orange", "yellow", "green", "turquoise"),
+                       values = rescale(c(0.17, 0.2, 0.23, 0.26, 0.29, 0.32)),
+                       limits = c(0.17, 0.32)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% reduction in size vs no intervention") +
+  theme_minimal() +
+  theme(axis.title = element_text(size = 16),
+        legend.title = element_text(size = 16))
+
+
+# Wrangle to data frame of lengths
+indiv_het_tgt_length_df <- melt(indiv_het_tgt_length)
+names(indiv_het_tgt_length_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "length")
+# Map to actual x/y variable values
+indiv_het_tgt_length_df$patch_tgt_lvl <- patch_tgt_lvls[indiv_het_tgt_length_df$patch_tgt_lvl]
+indiv_het_tgt_length_df$indiv_tgt_lvl <- indiv_tgt_lvls[indiv_het_tgt_length_df$indiv_tgt_lvl]
+
+# Plot heat map for lengths for different degrees of patch- and individual-level targeting
+ggplot(indiv_het_tgt_length_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = length)) +
+  geom_tile() +
+  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
+  #                      values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
+  #                      limits = c(1.2, 4)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% change in length vs no intervention") +
+  theme_minimal()
+
+# Patch- and individual-level heterogeneity
+# Calculate reference R0, size and length
+# Calculate times
+times = seq(0, 365, by = 1)
+
+# Set population sizes and original parameters - patch-level heterogeneous case
+N_A <- 10000 # Patch A population size
+N_B <- 10000 # Patch B population size
+pAH <- 0.95 # Proportion of high- and low-infectiousness individuals in patch A
+pAL <- 0.05
+pBH <- 0.95 # Proportion of high- and low-infectiousness individuals in patch B
+pBL <- 0.05
+b_D_AH <- 0.0000225 * 0.5 / pAH # Direct transmission rate for high-infectiousness individuals in patch A
+b_D_AL <- 0.0000225 * 0.5 / pAL # Direct transmission rate for low-infectiousness individuals in patch A
+b_D_BH <- 0.0000075 * 0.5 / pBH # Direct transmission rate for high-infectiousness individuals in patch B
+b_D_BL <- 0.0000075 * 0.5 / pBL # Direct transmission rate for low-infectiousness individuals in patch B
+b_W_A <- 0.075 # Indirect transmission rate for patch A
+b_W_B <- 0.025 # Indirect transmission rate for patch B
+alpha_AH <- 10 * 0.5 / pAH # Shedding rate for high-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_AL <- 10 * 0.5 / pAL # Shedding rate for low-infectiousness individuals in patch A; cells mL^-1 d^-1 person^-1
+alpha_BH <- 10 * 0.5 / pBH # Shedding rate for high-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+alpha_BL <- 10 * 0.5 / pBL # Shedding rate for low-infectiousness individuals in patch B; cells mL^-1 d^-1 person^-1 
+tot_shed <- alpha_AH * N_A + alpha_AL * N_A + alpha_BH * N_B + alpha_BL * N_B # Total shedding from all individuals, for scaling
+xi <- 1/30  # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+
+# Calculate non-dimensionalised parameters
+paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
+          betaWA  = b_W_A * tot_shed / xi,        # Indirect transmission rate to patch A 
+          betaWB  = b_W_B * tot_shed / xi,        # Indirect transmission rate to patch B 
+          kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
+          pAH     = pAH,        # Equal proportion of high- and low-infectiousness individuals in patch A
+          pAL     = pAL,
+          pBH     = pBH,        # Equal proportion of high- and low-infectiousness individuals in patch B
+          pBL     = pBL,
+          betaDAH = b_D_AH * N_A,       # Direct transmission rate for high-infectiousness individuals in patch A
+          betaDAL = b_D_AL * N_A,       # Direct transmission rate for low-infectiousness individuals in patch A
+          betaDBH = b_D_BH * N_B,       # Direct transmission rate for high-infectiousness individuals in patch B
+          betaDBL = b_D_BL * N_B,       # Direct transmission rate for low-infectiousness individuals in patch B
+          zeta    = 0, # Inter-patch mixing cut off for now
+          gamma   = 1/5, # Duration of infection of 5 days
+          aAH     = alpha_AH * N_A / tot_shed,  # Shedding rate from high-infectiousness individuals in patch A; scaled as proportion of total shedding
+          aAL     = alpha_AL * N_A / tot_shed,  # Shedding rate from low-infectiousness individuals in patch A; scaled as proportion of total shedding
+          aBH     = alpha_BH * N_B / tot_shed,  # Shedding rate from high-infectiousness individuals in patch B; scaled as proportion of total shedding
+          aBL     = alpha_BL * N_B / tot_shed,  # Shedding rate from low-infectiousness individuals in patch B; scaled as proportion of total shedding
+          xi      = xi)     # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+
+# Set initial conditions - epidemic conditions
+start <- c(SA  = 0.99,  # Susceptibles in patch A
+           IAH = 0.005, # High-infectiousness infectious individuals in patch A
+           IAL = 0.005, # Low-infectiousness infectious individuals in patch A
+           RA  = 0,     # Recovered-and-immune individuals in patch A
+           SB  = 0.99,  # Susceptibles in patch B
+           IBH = 0.005, # High-infectiousness infectious individuals in patch B
+           IBL = 0.005, # Low-infectiousness infectious individuals in patch B
+           RB  = 0,     # Recovered-and-immune individuals in patch B
+           W   = 0)  # Bacterial concentration in the environmental reservoir
+
+# Get outputs 
+ref_outputs <- get.outputs(start = start, params = paras)
+
+# Set degrees of patch-level targeting
+patch_tgt_lvls <- seq(0, 1, length.out = 51)
+
+# Set degrees of individual-level targeting
+indiv_tgt_lvls <- seq(0, 1, length.out = 51)
+
+# Set empty data frames to store results
+both_het_tgt_R0     <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+both_het_tgt_size   <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+both_het_tgt_length <- array(data = NA, dim = c(length(patch_tgt_lvls), length(indiv_tgt_lvls)))
+
+# Run through different levels of targeting intervention and calculate changes in outputs
+for(i in 1:length(patch_tgt_lvls)){
+  patch_tgt_lvl <- patch_tgt_lvls[i]
+  
+  for(j in 1: length(indiv_tgt_lvls)){
+    indiv_tgt_lvl <- indiv_tgt_lvls[j]
+    
+    paras = c(mu      = 1/(43.5*365), # Mean 43.5-year lifespan
+              betaWA  = b_W_A * tot_shed / xi * (1 - (patch_tgt_lvl * int_lvl)),        # Indirect transmission rate to patch A
+              betaWB  = b_W_B * tot_shed / xi * (1 - ((1 - patch_tgt_lvl) * int_lvl)),        # Indirect transmission rate to patch B
+              kappa   = 10^6,       # Saturating coefficient - infectious dose sufficient for 50% infection cells/mL 
+              pAH     = pAH,        # Equal proportion of high- and low-infectiousness individuals in patch A
+              pAL     = pAL,
+              pBH     = pBH,        # Equal proportion of high- and low-infectiousness individuals in patch B
+              pBL     = pBL,
+              betaDAH = b_D_AH * N_A * (1 - patch_tgt_lvl * indiv_tgt_lvl * int_lvl),       # Direct transmission rate for high-infectiousness individuals in patch A
+              betaDAL = b_D_AL * N_A * (1 - patch_tgt_lvl * (1 - indiv_tgt_lvl) * int_lvl),       # Direct transmission rate for low-infectiousness individuals in patch A
+              betaDBH = b_D_BH * N_B * (1 - (1 - patch_tgt_lvl) * indiv_tgt_lvl * int_lvl),       # Direct transmission rate for high-infectiousness individuals in patch B
+              betaDBL = b_D_BL * N_B * (1 - (1 - patch_tgt_lvl) * (1 - indiv_tgt_lvl) * int_lvl),       # Direct transmission rate for low-infectiousness individuals in patch B
+              zeta    = 0, # Inter-patch mixing cut off for now
+              gamma   = 1/5, # Duration of infection of 5 days
+              aAH     = alpha_AH * N_A / tot_shed * (1 - patch_tgt_lvl * indiv_tgt_lvl * int_lvl),  # Shedding rate from high-infectiousness individuals in patch A; scaled as proportion of total shedding
+              aAL     = alpha_AL * N_A / tot_shed * (1 - patch_tgt_lvl * (1 - indiv_tgt_lvl) * int_lvl),  # Shedding rate from low-infectiousness individuals in patch A; scaled as proportion of total shedding
+              aBH     = alpha_BH * N_B / tot_shed * (1 - (1 - patch_tgt_lvl) * indiv_tgt_lvl * int_lvl),  # Shedding rate from high-infectiousness individuals in patch B; scaled as proportion of total shedding
+              aBL     = alpha_BL * N_B / tot_shed * (1 - (1 - patch_tgt_lvl) * (1 - indiv_tgt_lvl) * int_lvl),  # Shedding rate from low-infectiousness individuals in patch B; scaled as proportion of total shedding
+              xi      = xi)     # Rate of loss of bacteria from the environmental reservoir - 30 day life span
+    
+    # Set initial conditions - epidemic conditions
+    start <- c(SA  = 0.99,  # Susceptibles in patch A
+               IAH = 0.005, # High-infectiousness infectious individuals in patch A
+               IAL = 0.005, # Low-infectiousness infectious individuals in patch A
+               RA  = 0,     # Recovered-and-immune individuals in patch A
+               SB  = 0.99,  # Susceptibles in patch B
+               IBH = 0.005, # High-infectiousness infectious individuals in patch B
+               IBL = 0.005, # Low-infectiousness infectious individuals in patch B
+               RB  = 0,     # Recovered-and-immune individuals in patch B
+               W   = 0)  # Bacterial concentration in the environmental reservoir
+    
+    # Get outputs
+    outputs <- get.outputs(start = start, params = paras)
+    
+    # Store results, relative to reference - (new - ref) / ref * 100 = % change in output relative to reference
+    both_het_tgt_R0[i, j] <- (outputs[1] - ref_outputs[1]) / ref_outputs[1]
+    both_het_tgt_size[i, j] <- (outputs[2] - ref_outputs[2]) / ref_outputs[2]
+    both_het_tgt_length[i, j] <- (outputs[3] - ref_outputs[3]) / ref_outputs[3]
+    
+    # Print i for tracking
+    print(i)
+  }
+}
+
+# Plot outputs
+# Wrangle to data frame of R0s
+both_het_tgt_R0_df <- melt(both_het_tgt_R0)
+names(both_het_tgt_R0_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "R0")
+# Map to actual x/y variable values
+both_het_tgt_R0_df$patch_tgt_lvl <- patch_tgt_lvls[both_het_tgt_R0_df$patch_tgt_lvl]
+both_het_tgt_R0_df$indiv_tgt_lvl <- indiv_tgt_lvls[both_het_tgt_R0_df$indiv_tgt_lvl]
+
+# Plot heat map for R0s for different degrees of patch- and individual-level targeting
+ggplot(both_het_tgt_R0_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = R0)) +
+  geom_tile() +
+  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
+  #                      values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
+  #                      limits = c(1.2, 4)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% change in R0 vs no intervention") +
+  theme_minimal()
+
+# Wrangle to data frame of sizes
+both_het_tgt_size_df <- melt(both_het_tgt_size)
+names(both_het_tgt_size_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "size")
+# Map to actual x/y variable values
+both_het_tgt_size_df$patch_tgt_lvl <- patch_tgt_lvls[both_het_tgt_size_df$patch_tgt_lvl]
+both_het_tgt_size_df$indiv_tgt_lvl <- indiv_tgt_lvls[both_het_tgt_size_df$indiv_tgt_lvl]
+
+# Plot heat map for sizes for different degrees of patch- and individual-level targeting
+ggplot(both_het_tgt_size_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = -size)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = c("purple", "red", "orange", "yellow", "green", "turquoise"),
+                       values = rescale(c(0.17, 0.2, 0.23, 0.26, 0.29, 0.32)),
+                       limits = c(0.17, 0.32)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% reduction in size vs no intervention") +
+  theme_minimal() +
+  theme(axis.title = element_text(size = 16),
+        legend.title = element_text(size = 16))
+
+
+
+# Wrangle to data frame of lengths
+both_het_tgt_length_df <- melt(both_het_tgt_length)
+names(both_het_tgt_length_df) <- c("patch_tgt_lvl", "indiv_tgt_lvl", "length")
+# Map to actual x/y variable values
+both_het_tgt_length_df$patch_tgt_lvl <- patch_tgt_lvls[both_het_tgt_length_df$patch_tgt_lvl]
+both_het_tgt_length_df$indiv_tgt_lvl <- indiv_tgt_lvls[both_het_tgt_length_df$indiv_tgt_lvl]
+
+# Plot heat map for lengths for different degrees of patch- and individual-level targeting
+ggplot(both_het_tgt_length_df, aes(x = patch_tgt_lvl, y = indiv_tgt_lvl, fill = length)) +
+  geom_tile() +
+  # scale_fill_gradientn(colors = c("blue", "green", "yellow", "orange", "red"),
+  #                      values = rescale(c(1.2, 1.9, 2.6, 3.3, 4)),
+  #                      limits = c(1.2, 4)) +
+  labs(x = "Degree of patch-level targeting",
+       y = "Degree of individual-level targeting",
+       fill = "% change in length vs no intervention") +
+  theme_minimal()
